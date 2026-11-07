@@ -119,21 +119,44 @@ function render(){
     ])):'<p>Adicione o primeiro equipamento desta máquina.</p>')+'</section>':'');
 }
 const field=(label,name,value='',optional=false)=>'<label>'+label+'<input name="'+name+'" value="'+esc(value)+'" '+(optional?'':'required')+'></label>';
+const equipmentTypes=['Válvula Globo Y','Válvula Globo Assento Reto','Válvula Esfera','Válvula Gaiola','Válvula Borboleta','Cilindro Pneumático','Atuador Cremalheira','Atuador Palheta'];
+const equipmentSizes=['DN 15','DN 20','DN 25','DN 32','DN 40','DN 50','DN 65','DN 80','DN 100','25','32','50','5','63','7','70','75','80','9','100','115','120','130'];
+function catalogField(label,name,options,value='',optional=false){
+  const choices=value&&!options.includes(value)?[...options,value]:options;
+  return '<label>'+label+'<select name="'+name+'" '+(optional?'':'required')+'><option value="">'+(optional?'Não informado':'Selecione')+'</option>'+
+    choices.map(choice=>'<option'+(choice===value?' selected':'')+'>'+esc(choice)+'</option>').join('')+'</select></label>';
+}
 function form(action,index){
   const m=machines[selected], machine=action.endsWith('machine'), copy=action==='copy-machine';
   const data=machine?(action==='new-machine'?{}:m):(m.items[index]||{});
   const html=machine?field('Cliente','client',data.client)+field('Unidade','unit',data.unit)+field('Setor','sector',data.sector)+field('Nome da máquina','name',copy?data.name+' (cópia)':data.name):
-    field('Tipo de equipamento','type',data.type)+field('Tamanho (DN ou polegadas)','size',data.size)+'<label>Serviço'+select('service',services,data.service,false)+'</label>'+
-    field('Acionamento','drive',data.drive)+'<label>Quantidade<input name="qty" type="number" min="1" max="999999" step="1" required value="'+esc(data.qty??1)+'"></label>'+
-    field('Fabricante','brand',data.brand,true)+field('Modelo','model',data.model,true)+field('Ponto de instalação','point',data.point,true)+'<label>Foto opcional<input type="file" name="photo" accept="image/*"></label>';
+    catalogField('Tipo de equipamento','type',[...equipmentTypes,'Outro'],data.type)+field('Outro tipo de equipamento','customType','',true)+
+    catalogField('Tamanho','size',equipmentSizes,data.size)+'<label>Serviço'+select('service',services,data.service,false)+'</label>'+
+    catalogField('Acionamento','drive',['Manual','Pneumático'],data.drive)+'<label>Quantidade<input name="qty" type="number" min="1" max="999999" step="1" required value="'+esc(data.qty??1)+'"></label>'+
+    catalogField('Fabricante','brand',['IFM'],data.brand??'IFM',true)+
+    catalogField('Ponto de instalação','point',['Lateral direita','Lateral esquerda','Superior','Inferior','Traseira'],data.point,true)+'<label>Foto opcional<input type="file" name="photo" accept="image/*"></label>';
   const dialog=byId('editor');
   dialog.innerHTML='<form><h2>'+(machine?(copy?'Duplicar máquina':'Cadastro da máquina'):'Cadastro do equipamento')+'</h2><div class="fields">'+html+'</div><p class="bar"><button class="primary">Salvar</button><button type="button" id="cancel">Cancelar</button></p></form>';
+  if(!machine){
+    const type=dialog.querySelector('[name="type"]');
+    const custom=dialog.querySelector('[name="customType"]');
+    const updateCustom=()=>{
+      const isOther=type.value==='Outro';
+      custom.closest('label').style.display=isOther?'':'none';
+      custom.disabled=!isOther;
+      custom.required=isOther;
+    };
+    type.onchange=updateCustom;
+    updateCustom();
+  }
   byId('cancel').onclick=()=>dialog.close();
   dialog.querySelector('form').onsubmit=async event=>{
     event.preventDefault();
     const submit=event.submitter;submit.disabled=true;
     try{
       const values=Object.fromEntries(new FormData(event.currentTarget));
+      if(!machine&&values.type==='Outro')values.type=values.customType;
+      delete values.customType;
       const next=JSON.parse(JSON.stringify(machines));
       const chosen=next[selected];
       let nextSelected=selected;
@@ -153,6 +176,7 @@ function form(action,index){
           values.photo=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});
         }
         values.qty=Number(values.qty);
+        if(data.model!==undefined)values.model=data.model;
         if(action==='edit-item')chosen.items[index]=values;
         else chosen.items.push(values);
       }
