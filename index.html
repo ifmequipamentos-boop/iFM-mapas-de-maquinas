@@ -114,7 +114,7 @@ function render(){
   byId('content').innerHTML='<section><h2>Máquinas cadastradas</h2><div class="bar"><label>Selecionar máquina<select id="machine">'+machines.map((m,i)=>'<option value="'+i+'" '+(i===selected?'selected':'')+'>'+esc(locationOf(m))+'</option>').join('')+'</select></label>'+button('Nova máquina','new-machine','primary')+'</div></section>'+
     (m?'<section><h2>'+esc(m.name)+'</h2><p>'+esc(locationOf(m))+'</p><div class="bar">'+button('Adicionar equipamento','new-item','primary')+button('Editar máquina','edit-machine')+button('Duplicar máquina','copy-machine')+button('Excluir máquina','delete-machine')+'</div></section><section><h2>Equipamentos instalados</h2>'+
     (m.items.length?table([...columns.slice(0,5),'Ações'],m.items.map((it,i)=>[
-      esc(it.type)+([it.brand,it.model,it.point,it.photo].some(Boolean)?'<details><summary>Detalhes</summary>'+[it.brand,it.model,it.point].filter(Boolean).map(esc).join(' · ')+(it.photo?'<div><img alt="Foto do equipamento" src="'+esc(it.photo)+'"></div>':'')+'</details>':''),
+      esc(it.type)+([it.brand,it.model,it.point,it.mounting,it.photo].some(Boolean)?'<details><summary>Detalhes</summary>'+[it.brand,it.model,it.point,it.mounting?'Montagem: '+it.mounting:''].filter(Boolean).map(esc).join(' · ')+(it.photo?'<div><img alt="Foto do equipamento" src="'+esc(it.photo)+'"></div>':'')+'</details>':''),
       ...[it.size,it.service,it.drive,it.qty].map(esc),button('Editar','edit-item:'+i)+' '+button('Excluir','delete-item:'+i)
     ])):'<p>Adicione o primeiro equipamento desta máquina.</p>')+'</section>':'');
 }
@@ -131,7 +131,8 @@ function form(action,index){
   const data=machine?(action==='new-machine'?{}:m):(m.items[index]||{});
   const html=machine?field('Cliente','client',data.client)+field('Unidade','unit',data.unit)+field('Setor','sector',data.sector)+field('Nome da máquina','name',copy?data.name+' (cópia)':data.name):
     catalogField('Tipo de equipamento','type',[...equipmentTypes,'Outro'],data.type)+field('Outro tipo de equipamento','customType','',true)+
-    catalogField('Tamanho','size',equipmentSizes,data.size)+'<label>Serviço'+select('service',services,data.service,false)+'</label>'+
+    catalogField('Tamanho','size',equipmentSizes,data.size)+
+    catalogField('Montagem','mounting',['Flange','Rosca','Suporte'],data.mounting,true)+'<label>Serviço'+select('service',services,data.service,false)+'</label>'+
     catalogField('Acionamento','drive',['Manual','Pneumático'],data.drive)+'<label>Quantidade<input name="qty" type="number" min="1" max="999999" step="1" required value="'+esc(data.qty??1)+'"></label>'+
     catalogField('Fabricante','brand',['IFM'],data.brand??'IFM',true)+
     catalogField('Ponto de instalação','point',['Lateral direita','Lateral esquerda','Superior','Inferior','Traseira'],data.point,true)+'<label>Foto opcional<input type="file" name="photo" accept="image/*"></label>';
